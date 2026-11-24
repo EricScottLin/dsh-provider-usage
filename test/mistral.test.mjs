@@ -203,3 +203,20 @@ test('a malformed subscription body is "no plan", not a throw', () => {
     enterprise: null,
   })
 })
+
+test('rows carry the budget currency, so the panel can show money not just a bar', () => {
+  const { usages } = parseMistralUsage(EDU_BUDGET, EDU_SUBSCRIPTION)
+  assert.deepEqual(
+    usages.map((row) => row.currency),
+    ['USD', 'USD'],
+  )
+
+  const eur = parseMistralUsage({
+    api_budget: { usage_percentage: 10, initial_budget: 50, currency: 'EUR', reset_at: null },
+  })
+  assert.equal(eur.usages[0].currency, 'EUR')
+
+  // A block with no currency leaves the panel on its percentage rendering.
+  const bare = parseMistralUsage({ api_budget: { usage_percentage: 10, initial_budget: 50 } })
+  assert.equal(bare.usages[0].currency, null)
+})

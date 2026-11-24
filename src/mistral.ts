@@ -173,6 +173,8 @@ export function budgetRow(detail: MistralBudgetDetail, label: string): UsageRow 
     remaining: Math.max(0, Math.round((limit - used) * 100) / 100),
     percent: Math.min(100, percent),
     resetAt: detail.resetAt,
+    // Money, not a count: the panel shows the amount instead of only a bar.
+    currency: detail.currency,
   }
 }
 

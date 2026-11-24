@@ -25,6 +25,12 @@ export interface UsageRow {
   percent: number | null
   /** ISO timestamp when the window resets, when the provider reports one. */
   resetAt: string | null
+  /**
+   * Currency of `used`/`limit`/`remaining` when the window is money rather
+   * than a count (Mistral's monthly allowances, Volcengine plan quotas). Null
+   * for count windows, where the panel keeps showing the percentage.
+   */
+  currency?: string | null
 }
 
 export interface ProviderUsageView {

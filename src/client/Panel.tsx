@@ -28,6 +28,8 @@ interface UsageRow {
   remaining: number | null
   percent: number | null
   resetAt: string | null
+  /** Set when the window is money: the row shows the amount, not only a bar. */
+  currency?: string | null
 }
 
 interface ProviderUsageView {
@@ -407,6 +409,48 @@ function formatAmount(value: number | null): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2)
 }
 
+/** Symbols for the currencies providers report; anything else falls back to
+    the ISO code so an unknown currency still reads as money. */
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', CNY: '¥', JPY: '¥', GBP: '£' }
+
+/** Money for a currency-bearing usage row: `$140.78`. */
+function formatMoney(value: number | null, currency: string | null): string {
+  if (value === null) return '—'
+  const amount = formatAmount(value)
+  if (currency === null) return amount
+  const symbol = CURRENCY_SYMBOLS[currency.toUpperCase()]
+  return symbol === undefined ? `${amount} ${currency.toUpperCase()}` : `${symbol}${amount}`
+}
+
+/** Whether a row's window is denominated in money rather than a count. */
+function isMoneyRow(row: { currency?: string | null }): boolean {
+  return typeof row.currency === 'string' && row.currency !== ''
+}
+
+/**
+ * What a usage row shows at the right of its label.
+ *
+ * A money window reads as `$140.78 / $150` — the remaining amount and the
+ * allowance — because for money the percentage alone cannot answer the
+ * question the panel exists for ("will I run out?"). Count windows keep the
+ * percentage, which is what their limit means anyway.
+ */
+function rowValueText(row: UsageRow, t: UsageActionProps['t']): string {
+  const currency = row.currency ?? null
+  if (row.label === 'credits' && row.remaining !== null) return formatAmount(row.remaining)
+  if (isMoneyRow(row) && row.remaining !== null) {
+    const left = formatMoney(row.remaining, currency)
+    return row.limit === null ? left : `${left} / ${formatMoney(row.limit, currency)}`
+  }
+  if (row.limit === null) {
+    if (row.used !== null) return t('usage.used', { used: formatAmount(row.used) })
+    if (row.remaining !== null) return formatAmount(row.remaining)
+    return t('usage.unlimited')
+  }
+  if (row.percent !== null) return `${Math.round(row.percent)}%`
+  return t('usage.used', { used: formatAmount(row.used) })
+}
+
 /**
  * Refine the host's `active` flags with the provider of the FOCUSED session
  * (the composer's own state), so a session switch re-highlights instantly
@@ -438,26 +482,20 @@ function UsageRows({ provider, now, red, yellow, t }: { provider: ProviderUsageV
       {rows.map((row, index) => {
         const percent = row.percent
         const isCredits = row.label === 'credits'
+        // A money-denominated window is judged by what is LEFT against the
+        // balance thresholds — "90% of the month used" says nothing about
+        // whether $2 or $200 remains. Count windows keep the percent tone.
+        const isMoney = isMoneyRow(row)
         // Credits rows carry a remaining balance and are judged by the amount;
         // quota windows keep the percent-based tone.
-        const tone = isCredits ? balanceTone(row.remaining, red, yellow) : barTone(row.percent)
+        const tone = isCredits || isMoney ? balanceTone(row.remaining, red, yellow) : barTone(row.percent)
         const reset = row.resetAt !== null ? formatCountdown(row.resetAt, now, t) : null
         return (
           <div className="dsh-usage-row" key={`${row.label}-${index}`}>
             <div className="dsh-usage-rowHead">
               <span className="dsh-usage-rowLabel">{row.label === 'weekly' ? t('usage.weekly') : row.label}</span>
               <span className={`dsh-usage-rowValue${tone === 'ok' ? '' : ` dsh-usage-rowValue--${tone}`}`}>
-                {isCredits && row.remaining !== null
-                  ? formatAmount(row.remaining)
-                  : row.limit === null
-                    ? row.used !== null
-                      ? t('usage.used', { used: formatAmount(row.used) })
-                      : row.remaining !== null
-                        ? formatAmount(row.remaining)
-                        : t('usage.unlimited')
-                    : percent !== null
-                      ? `${Math.round(percent)}%`
-                      : t('usage.used', { used: formatAmount(row.used) })}
+                {rowValueText(row, t)}
               </span>
             </div>
             {percent !== null ? (
