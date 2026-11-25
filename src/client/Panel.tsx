@@ -430,17 +430,20 @@ function isMoneyRow(row: { currency?: string | null }): boolean {
 /**
  * What a usage row shows at the right of its label.
  *
- * A money window reads as `$140.78 / $150` — the remaining amount and the
- * allowance — because for money the percentage alone cannot answer the
- * question the panel exists for ("will I run out?"). Count windows keep the
- * percentage, which is what their limit means anyway.
+ * A money window reads as `$140.78 / $150 · 6%` — the remaining amount, the
+ * allowance, and how much of it is spent. The amount answers the question the
+ * panel exists for ("will I run out?"); the percentage keeps the at-a-glance
+ * rhythm the count windows have, so one glance reads the same way across
+ * providers. Count windows keep the percentage alone, which is what their
+ * limit means anyway.
  */
 function rowValueText(row: UsageRow, t: UsageActionProps['t']): string {
   const currency = row.currency ?? null
   if (row.label === 'credits' && row.remaining !== null) return formatAmount(row.remaining)
   if (isMoneyRow(row) && row.remaining !== null) {
     const left = formatMoney(row.remaining, currency)
-    return row.limit === null ? left : `${left} / ${formatMoney(row.limit, currency)}`
+    const head = row.limit === null ? left : `${left} / ${formatMoney(row.limit, currency)}`
+    return row.percent === null ? head : `${head} · ${Math.round(row.percent)}%`
   }
   if (row.limit === null) {
     if (row.used !== null) return t('usage.used', { used: formatAmount(row.used) })
