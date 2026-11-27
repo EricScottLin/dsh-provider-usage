@@ -6,3 +6,4 @@ lib/
 
 # Local-only drafts (e.g. community-post drafts), never committed
 docs/discussion-518-post.md
+*.tgz
