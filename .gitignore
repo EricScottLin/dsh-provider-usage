@@ -1,9 +1,9 @@
 node_modules/
-lib/
+# lib/ 在本 fork 中入库：朋友用 git 链接安装时不需要自己构建
+# 打包产物只上传到 Release，不进仓库
+*.tgz
 *.tsbuildinfo
 .DS_Store
-*.tgz
 
 # Local-only drafts (e.g. community-post drafts), never committed
 docs/discussion-518-post.md
-*.tgz
