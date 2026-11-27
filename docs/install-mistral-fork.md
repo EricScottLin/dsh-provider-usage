@@ -14,59 +14,40 @@
 
 ---
 
-## 安装方式 A：用打包好的 tgz（最简单，推荐）
-
-拿到 `dsh-provider-usage-0.3.17-mistral.1.tgz` 后：
+## 安装：一条命令
 
 ```bash
-dsh plugin add /path/to/dsh-provider-usage-0.3.17-mistral.1.tgz
+dsh plugin add "github:EricScottLin/dsh-provider-usage#feat/mistral-amount-display"
 ```
 
-`dsh plugin` 会把包 pnpm 装进 profile，并自动把 `dsh-provider-usage` 补进
+`dsh plugin` 会装进当前 profile，并自动把 `dsh-provider-usage` 补进
 `dsh.profile.bundles`，不用手工改 `package.json`。
 
-装完重启 dsh web 生效：
+装完重启 dsh web 生效。
 
-```bash
-systemctl restart dsh-web   # 或按你自己的方式重启
+### 或在 Web 界面装
+
+**Plugins → Add plugin**，在包名输入框里填同样的地址：
+
+```
+github:EricScottLin/dsh-provider-usage#feat/mistral-amount-display
 ```
 
-> 若之前装过官方 npm 版，用 `dsh plugin add` 指向本地 tgz 即可覆盖；
-> pnpm 对同版本的 `file:` 依赖会直接换成本地包。
+这个输入框接受包名、Git 地址、tarball 和本地绝对路径，Git 地址这条已验证可用。
 
-## 安装方式 B：从 git 分支装
+### 想锁定版本（推荐）
 
-分支 `feat/mistral-amount-display` 在 <https://github.com/EricScottLin/dsh-provider-usage>，
-包含全部改动（Mistral 适配器 + 金额显示）。
-
-这个仓库的 `lib/` 不进 git，所以要自己构建：
+分支会随更新变动。要固定在验证过的这个版本，用 commit SHA：
 
 ```bash
-git clone https://github.com/EricScottLin/dsh-provider-usage.git
-cd dsh-provider-usage
-git checkout feat/mistral-amount-display
-pnpm install && pnpm build
+dsh plugin add "github:EricScottLin/dsh-provider-usage#a2b7f5d0134523af2de6b3841ad7c6e37d22d815"
 ```
-
-然后在 profile 里 link 这个目录：
-
-```bash
-cd ~/.dsh/profiles/web
-pnpm add "link:/path/to/dsh-provider-usage"
-```
-
-（或直接改 `package.json` 的 `dependencies` 为 `"dsh-provider-usage": "link:/path/to/dsh-provider-usage"`，
-并确认 `dsh.profile.bundles` 数组里有 `"dsh-provider-usage"`。）
-
-之后想跟进更新，`git pull` 后重新 `pnpm build` 再重启即可。
-
-> 若不想自己构建，用方式 A 的 tgz。
 
 ---
 
 ## 配置 Mistral key
 
-插件会按 `MISTRAL_API_KEY` 这个名字解析凭据，两种方式任选：
+插件按 `MISTRAL_API_KEY` 这个名字解析凭据，两种方式任选：
 
 **方式一：环境变量**
 
@@ -86,34 +67,46 @@ key 在 <https://console.mistral.ai/api-keys> 创建，普通 API key 就行，�
 
 ## 装完怎么确认
 
-1. 重启后打开 dsh Web，左下角侧边栏应有一个小用量球，点开能看到 provider 列表
-2. Mistral 那组应显示两行：
+重启后打开 dsh Web，左下角侧边栏应有一个小用量球，点开能看到 provider 列表。
+Mistral 那组应显示两行：
 
 ```
 API · Month        $15 / $15 · 0%
 Vibe · Month       $71.43 / $150 · 52%
 ```
 
-数字随你实际用量变化。如果显示「不支持」，说明加载的还是官方版，检查 profile 的依赖是否指向了这份定制版。
+数字随实际用量变化。
 
-如果显示「缺少凭据」，说明 `MISTRAL_API_KEY` 没读到。
+- 显示「不支持」→ 装的是官方版，检查 profile 依赖是否指向这份定制版
+- 显示「缺少凭据」→ `MISTRAL_API_KEY` 没读到
+
+---
+
+## 更新
+
+```bash
+dsh plugin remove dsh-provider-usage
+dsh plugin add "github:EricScottLin/dsh-provider-usage#feat/mistral-amount-display"
+```
+
+（HMR profile 不允许直接覆盖已安装的包，要先移除。）
 
 ---
 
 ## 已知限制
 
 - **两个额度都是组织级的**：同一个 Mistral 组织下，任何 key 读到同一对数字。区别只在 key 花哪个额度（console API key 花 `api_budget`，Vibe key 花 `vibe_budget`），所以两行都显示。
-- **免费套餐**：没有额度时可能显示「无生效中的套餐」，而不是 0/0 进度条（后者会被误读为额度耗尽）。
+- **免费套餐**：没有额度时显示「无生效中的套餐」，而不是 0/0 进度条（后者会被误读为额度耗尽）。
 - **金额与百分比同时显示**是本地改进，尚未合入上游。上游作者若采纳，建议改用发布版。
+- `lib/` 构建产物直接入库（上游靠 npm publish 时构建），所以这个 fork 能从 Git 直接装，不需要自己 build。
 
 ---
 
-## 回滚
+## 回滚到官方版
 
-把 profile 里的 `dsh-provider-usage` 改回官方版：
-
-```json
-"dsh-provider-usage": "^0.3.17"
+```bash
+dsh plugin remove dsh-provider-usage
+dsh plugin add dsh-provider-usage
 ```
 
-`pnpm install` 后重启即可。或直接删掉这一行和 `bundles` 里的对应项。
+装的是 npm 上的官方版本，Mistral 会重新显示为「不支持」。
